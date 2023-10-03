@@ -13,6 +13,12 @@
 import Basics
 import Foundation
 
+#if os(Windows)
+private let isSeparator: (Character) -> Bool = { $0 == "/" || $0 == "\\" }
+#else
+private let isSeparator: (Character) -> Bool = { $0 == "/" }
+#endif
+
 /// The canonical identifier for a package, based on its source location.
 public struct PackageIdentity: CustomStringConvertible, Sendable {
     /// A textual representation of this instance.
@@ -293,9 +299,25 @@ extension PackageIdentity {
     }
 }
 
+extension PackageIdentity {
+
+    public var lastPathComponent: String {
+
+        let description = self.description
+
+        guard let lastIndex = description.lastIndex(where: { isSeparator($0) })
+        else { return description }
+
+        return String(description[description.index(after: lastIndex)..<description.endIndex])
+
+    }
+
+}
+
 // MARK: -
 
 struct PackageIdentityParser {
+
     /// A textual representation of this instance.
     public let description: String
 
@@ -316,11 +338,8 @@ struct PackageIdentityParser {
 
     /// Compute the default name of a package given its location.
     public static func computeDefaultName(fromLocation url: String) -> String {
-        #if os(Windows)
-        let isSeparator: (Character) -> Bool = { $0 == "/" || $0 == "\\" }
-        #else
-        let isSeparator: (Character) -> Bool = { $0 == "/" }
-        #endif
+
+        guard !url.isEmpty && url != "/" else { return "" }
 
         // Get the last path component of the URL.
         // Drop the last character in case it's a trailing slash.
@@ -329,17 +348,24 @@ struct PackageIdentityParser {
             endIndex = url.index(before: endIndex)
         }
 
-        let separatorIndex = url[..<endIndex].lastIndex(where: isSeparator)
-        let startIndex = separatorIndex.map { url.index(after: $0) } ?? url.startIndex
-        var lastComponent = url[startIndex ..< endIndex]
+        let seperatorIndexes = url.enumerated()
+            .filter({ isSeparator($0.element) })
+            .map({ url.index(url.startIndex, offsetBy: $0.offset) })
+
+        guard !seperatorIndexes.isEmpty else { return url }
+
+        let splitIndex = seperatorIndexes[seperatorIndexes.count - (seperatorIndexes.count > 1 ? 2 : 1)]
+
+        var defaultName = url[url.index(after: splitIndex)..<endIndex]
 
         // Strip `.git` suffix if present.
-        if lastComponent.hasSuffix(".git") {
-            lastComponent = lastComponent.dropLast(4)
+        if defaultName.hasSuffix(".git") {
+            defaultName = defaultName.dropLast(4)
         }
 
-        return String(lastComponent)
+        return String(defaultName)
     }
+
 }
 
 /// A canonicalized package location.
@@ -464,12 +490,6 @@ public struct CanonicalPackageLocation: Equatable, CustomStringConvertible {
         self.description = description
     }
 }
-
-#if os(Windows)
-fileprivate let isSeparator: (Character) -> Bool = { $0 == "/" || $0 == "\\" }
-#else
-fileprivate let isSeparator: (Character) -> Bool = { $0 == "/" }
-#endif
 
 extension Character {
     fileprivate var isDigit: Bool {

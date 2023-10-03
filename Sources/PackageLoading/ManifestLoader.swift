@@ -835,7 +835,7 @@ public final class ManifestLoader: ManifestLoaderProtocol {
         // Add the arguments for emitting serialized diagnostics, if requested.
         if self.serializedDiagnostics, let databaseCacheDir = self.databaseCacheDir {
             let diaDir = databaseCacheDir.appending("ManifestLoading")
-            let diagnosticFile = diaDir.appending("\(packageIdentity).dia")
+            let diagnosticFile = diaDir.appending("\(packageIdentity.lastPathComponent).dia")
             do {
                 try localFileSystem.createDirectory(diaDir, recursive: true)
                 cmd += ["-Xfrontend", "-serialize-diagnostics-path", "-Xfrontend", diagnosticFile.pathString]
@@ -878,7 +878,8 @@ public final class ManifestLoader: ManifestLoaderProtocol {
                     #else
                     let executableSuffix = ""
                     #endif
-                    let compiledManifestFile = tmpDir.appending("\(packageIdentity)-manifest\(executableSuffix)")
+
+                    let compiledManifestFile = tmpDir.appending("\(packageIdentity.lastPathComponent)-manifest\(executableSuffix)")
                     cmd += ["-o", compiledManifestFile.pathString]
 
                     evaluationResult.compilerCommandLine = cmd
@@ -904,7 +905,7 @@ public final class ManifestLoader: ManifestLoaderProtocol {
                         }
 
                         // Pass an open file descriptor of a file to which the JSON representation of the manifest will be written.
-                        let jsonOutputFile = tmpDir.appending("\(packageIdentity)-output.json")
+                        let jsonOutputFile = tmpDir.appending("\(packageIdentity.lastPathComponent)-output.json")
                         guard let jsonOutputFileDesc = fopen(jsonOutputFile.pathString, "w") else {
                             return completion(.failure(StringError("couldn't create the manifest's JSON output file")))
                         }
